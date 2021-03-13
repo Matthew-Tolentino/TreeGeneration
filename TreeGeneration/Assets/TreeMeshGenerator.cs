@@ -4,7 +4,7 @@ using UnityEngine;
 
 public static class TreeMeshGenerator
 {
-    public static MeshData GenerateTreeMesh(List<Line> branches, float angle = 1.05f, float radius = 1f)
+    public static MeshData GenerateTreeMesh(List<Line> branches, float angle = 1.05f, float radius = 1f, float thinning = 1f)
     {
         MeshData meshData = new MeshData(branches.Count);
         int vertexIndex = 0;
@@ -27,10 +27,10 @@ public static class TreeMeshGenerator
                 int[] verticesToStore = new int[6];
                 for (int j = 0; j < 6; j++)
                 {
-                    Vector3 rotatedVector = RotateVector(direction, tan, binormal, j, angle);
+                    Vector3 rotatedVector = RotateVector(direction, tan, binormal, j, angle) * radius;
 
                     if (!closePoints.Contains(branches[i].pos1))
-                        meshData.vertices[vertexIndex] = (branches[i].pos1 + rotatedVector) * radius;
+                        meshData.vertices[vertexIndex] = (branches[i].pos1 + rotatedVector);
                     else
                         meshData.vertices[vertexIndex] = branches[i].pos1;
 
@@ -47,10 +47,10 @@ public static class TreeMeshGenerator
                 int[] verticesToStore = new int[6];
                 for (int j = 0; j < 6; j++)
                 {
-                    Vector3 rotatedVector = RotateVector(direction, tan, binormal, j, angle);
-
+                    Vector3 rotatedVector = RotateVector(direction, tan, binormal, j, angle) * radius;
+                     
                     if (!closePoints.Contains(branches[i].pos2))
-                        meshData.vertices[vertexIndex] = (branches[i].pos2 + rotatedVector) * radius;
+                        meshData.vertices[vertexIndex] = (branches[i].pos2 + rotatedVector);
                     else
                         meshData.vertices[vertexIndex] = branches[i].pos2;
 
@@ -79,6 +79,8 @@ public static class TreeMeshGenerator
                     }
                 }
             }
+
+            radius *= thinning;
         }
         return meshData;
     }

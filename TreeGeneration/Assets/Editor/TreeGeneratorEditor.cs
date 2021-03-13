@@ -12,7 +12,11 @@ public class TreeGeneratorEditor : Editor
 
         if (DrawDefaultInspector())
         {
-            treeGen.GenerateTree();
+            if (treeGen.autoUpdate)
+            {
+                treeGen.GenerateTreeMesh();
+            }
+
         }
 
         if (GUILayout.Button("Generate"))

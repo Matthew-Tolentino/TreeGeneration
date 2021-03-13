@@ -6,10 +6,18 @@ public class TreeGenerator : MonoBehaviour
 {
     [Header("Visuals")]
     public bool drawWireFrame;
+    public bool autoUpdate;
+    public bool drawMesh;
 
     [Header("Tree Logic")]
-    public int branchLen = 1;
+    public float branchLen = 1f;
     public int angle = 30;
+    [Range(.5f,5f)]
+    public float radius = 1f;
+    [Range(.99f, 1.05f)]
+    public float thinning = 1f;
+    [Range(.99f, 1.05f)]
+    public float trimming = 1f;
     public string axiom;
     public string sentence;
     public Rule[] rules;
@@ -34,8 +42,7 @@ public class TreeGenerator : MonoBehaviour
         position = origin;
 
         GenerateTreeLSystem();
-        m = TreeMeshGenerator.GenerateTreeMesh(lines);
-        meshFilter.sharedMesh = m.CreateMesh();
+        GenerateTreeMesh();
     }
 
     public void GenerateNextIteration()
@@ -44,8 +51,18 @@ public class TreeGenerator : MonoBehaviour
         lines.Clear();
         position = origin;
         GenerateTreeLSystem();
-        m = TreeMeshGenerator.GenerateTreeMesh(lines);
-        meshFilter.sharedMesh = m.CreateMesh();
+        GenerateTreeMesh();
+    }
+
+    public void GenerateTreeMesh()
+    {
+        if (drawMesh)
+        {
+            m = TreeMeshGenerator.GenerateTreeMesh(lines, 1.05f, radius, thinning);
+            meshFilter.sharedMesh = m.CreateMesh();
+        }
+        else
+            meshFilter.sharedMesh = new Mesh();
     }
 
     public void GenerateSentence()
@@ -76,8 +93,9 @@ public class TreeGenerator : MonoBehaviour
         return null;
     }
 
-    void GenerateTreeLSystem()
+    public void GenerateTreeLSystem()
     {
+        float tempBranchLen = branchLen;
         for (int i = 0; i < sentence.Length; i++)
         {
             char current = sentence[i];
@@ -85,12 +103,12 @@ public class TreeGenerator : MonoBehaviour
             switch (current)
             {
                 case 'F': // move forward at distance L(Step Length) and draw a line
-                    Vector3 newPosition = position + (direction.normalized * branchLen);
+                    Vector3 newPosition = position + (direction.normalized * tempBranchLen);
                     lines.Add(new Line(position, newPosition));
                     position = newPosition;
                     break;
                 case 'f': // move forward at distance L(Step Length) without drawing a line
-                    Vector3 newPosition_ = position + (direction.normalized * branchLen);
+                    Vector3 newPosition_ = position + (direction.normalized * tempBranchLen);
                     position = newPosition_;
                     break;
                 case '+': // turn left A(Default Angle) degrees (y-axis)
@@ -125,6 +143,8 @@ public class TreeGenerator : MonoBehaviour
                 default:
                     break;
             }
+
+            tempBranchLen *= trimming;
         }
     }
 
@@ -134,6 +154,7 @@ public class TreeGenerator : MonoBehaviour
         lines.Clear();
         position = origin;
         m = null;
+        branchLen = 5f;
         direction = Vector3.up;
     }
 
@@ -156,13 +177,6 @@ public class TreeGenerator : MonoBehaviour
             }
         }
     }
-}
-
-[System.Serializable]
-public struct Rule
-{
-    public char c;
-    public string s;
 }
 
 public struct Point
