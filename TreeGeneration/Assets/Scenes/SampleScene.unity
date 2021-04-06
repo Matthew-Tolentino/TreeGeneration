@@ -656,19 +656,17 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   drawWireFrame: 1
   autoUpdate: 1
-  trunkMinLen: 0
-  trunkMaxLen: 0
-  trunkMinVal: 0
-  trunkMaxVal: 0
-  trunkLen: 2.42
-  branchLen: 1.28
-  numTrunkPoints: 5
-  seed: 1
-  offsetStrength: 1
-  Xoffset: {x: 0.22, y: 0.18}
+  trunkMinLen: 2.62
+  trunkMaxLen: 4.06
+  branchLen: 4.96
+  numTrunkPoints: 6
+  seed: 2
+  offsetStrength: 7.96
+  Xoffset: {x: 1.19, y: 0.07}
   Yoffset: {x: 0, y: 0}
   Zoffset: {x: -0.01, y: 0.13}
-  numBraches: 6
+  numBrachesMin: 0
+  numBrachesMax: 3
   spawnHeight: 0
   branchDepth: 0
 --- !u!4 &1512523629

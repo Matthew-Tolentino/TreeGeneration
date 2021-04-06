@@ -26,9 +26,11 @@ public class NoiseTreeGenerator : MonoBehaviour
     public Vector2 Zoffset;
 
     [Header("Branches")]
-    public int numBraches;
+    public int numBrachesMin, numBrachesMax;
     public int spawnHeight;
     public int branchDepth;
+
+    private Vector3[] branches;
 
     public void GenerateTree() {
         // Debug.Log(trunkMinLen + ", " + trunkMaxLen);
@@ -48,7 +50,10 @@ public class NoiseTreeGenerator : MonoBehaviour
         for (int i = 1; i < numTrunkPoints; i++) {
             Vector3 offsetVec = NoiseOffset(i) * offsetStrength;
 
-            position += (direction.normalized + offsetVec) * (prng.Next((int)trunkMinLen, (int)trunkMaxLen));
+            float trunkLen = prng.Next((int)trunkMinLen, (int)trunkMaxLen);
+            Debug.Log(trunkLen);
+
+            position += (direction.normalized + offsetVec) * trunkLen;
             trunkPoints[i] = position;
             position.x = transform.position.x;
             position.z = transform.position.z;
@@ -57,9 +62,15 @@ public class NoiseTreeGenerator : MonoBehaviour
 
     public void GenerateBranches() {
         System.Random prng = new System.Random(seed);
-        for (int i = 0; i < numTrunkPoints; i++) {
+
+        int numBraches = prng.Next(numBrachesMin, numBrachesMax);
+
+        branches = new Vector3[numBraches];
+
+        for (int i = 0; i < numBraches; i++) {
             position = trunkPoints[prng.Next(1, numTrunkPoints)];
             // Generate rest of branches here
+            branches[i] = position;
         }
     }
 
@@ -104,6 +115,20 @@ public class NoiseTreeGenerator : MonoBehaviour
             }
             Gizmos.DrawSphere(trunkPoints[trunkPoints.Length - 1], .1f);
             Gizmos.DrawLine(trunkPoints[trunkPoints.Length - 2], trunkPoints[trunkPoints.Length - 1]);
+
+            Gizmos.color = Color.red;
+            for (int j = 0; j < branches.Length; j++) {
+                Gizmos.DrawWireSphere(branches[j], .2f);
+            }
         }
+    }
+
+    void printArray(Vector3[] arr) {
+        string str = "[";
+        foreach (Vector3 v in arr) {
+            str += v + ", ";
+        }
+        str += "]";
+        Debug.Log(str);
     }
 }
