@@ -26,11 +26,21 @@ public class NoiseTreeGenerator : MonoBehaviour
     public Vector2 Zoffset;
 
     [Header("Branches")]
+    [HideInInspector]
     public int numBrachesMin, numBrachesMax;
+    [HideInInspector]
+    public float branchMinLen, branchMaxLen;
+    [HideInInspector]
+    public int branchPointsMin, branchPointsMax;
     public int spawnHeight;
     public int branchDepth;
+    [Range(1, 60)]
+    public float branchAngle;
+    [Range(0, 100)]
+    public float splitChance;
 
-    private Vector3[] branches;
+    private Vector3[] branchPoints;
+    private List<Branch> branches;
 
     public void GenerateTree() {
         // Debug.Log(trunkMinLen + ", " + trunkMaxLen);
@@ -51,7 +61,6 @@ public class NoiseTreeGenerator : MonoBehaviour
             Vector3 offsetVec = NoiseOffset(i) * offsetStrength;
 
             float trunkLen = prng.Next((int)trunkMinLen, (int)trunkMaxLen);
-            Debug.Log(trunkLen);
 
             position += (direction.normalized + offsetVec) * trunkLen;
             trunkPoints[i] = position;
@@ -65,13 +74,82 @@ public class NoiseTreeGenerator : MonoBehaviour
 
         int numBraches = prng.Next(numBrachesMin, numBrachesMax);
 
-        branches = new Vector3[numBraches];
+        // branchPoints = new Vector3[numBraches];
+        branches = new List<Branch>();
 
         for (int i = 0; i < numBraches; i++) {
-            position = trunkPoints[prng.Next(1, numTrunkPoints)];
-            // Generate rest of branches here
-            branches[i] = position;
+            position = trunkPoints[prng.Next(spawnHeight, numTrunkPoints)];
+            // Generate starting point on branches
+            Branch new_Branch = new Branch();
+            new_Branch.points.Add(position);
+
+            Vector3 direction = RotateDirection(branchAngle, Vector3.up, prng, 100f);
+            Branch newBranch = GenerateBranch(direction, position, branchAngle, branchDepth, splitChance, prng);
+
+            branches.Add(newBranch);
         }
+    }
+
+    public Branch GenerateBranch(Vector3 dir, Vector3 startPos, float changeAngle, int depth, float splitChance, System.Random prng) {
+        Branch newBranch = new Branch();
+        float newBranchPoints = prng.Next(branchPointsMin, branchPointsMax);
+        float newBranchLen = prng.Next((int)branchMinLen, (int)branchMaxLen);
+        Vector3 position = startPos;
+
+        // Generate points for branch
+        newBranch.points.Add(startPos);
+        for (int i = 1; i < newBranchPoints; i++) {
+            Vector3 newDir = RotateDirection(changeAngle, dir, prng, 100f);
+            position += newDir * newBranchLen;
+            newBranch.points.Add(position);
+            // Debug.Log(position);
+        }
+
+        return newBranch;
+    }
+
+    public Vector3 RotateDirection(float angle, Vector3 dir, System.Random prng, float rotThresh) {
+        Vector3 newDir = dir;
+        // rotate only on x or z if direction is up
+        if (newDir == Vector3.up) {
+            Debug.Log("Up");
+            float rotPick = prng.Next(0, 4);
+            Debug.Log(rotPick);
+            if (rotPick == 0)
+                newDir = Quaternion.Euler(angle, 0, 0) * newDir;
+            else if (rotPick == 1)
+                newDir = Quaternion.Euler(-angle, 0, 0) * newDir;
+            else if (rotPick == 2)
+                newDir = Quaternion.Euler(0, 0, angle) * newDir;
+            else
+                newDir = Quaternion.Euler(0, 0, -angle) * newDir;
+            Debug.Log(newDir);
+        }
+
+        float rotChance = prng.Next(0, 100);
+        
+        if (rotChance < rotThresh) {
+            Debug.Log("rotating");
+            float rotPick = prng.Next(0, 6);
+            Debug.Log(rotPick);
+            if (rotPick == 0)
+                newDir = Quaternion.Euler(angle, 0, 0) * newDir;
+            else if (rotPick == 1)
+                newDir = Quaternion.Euler(-angle, 0, 0) * newDir;
+            else if (rotPick == 2)
+                newDir = Quaternion.Euler(0, 0, angle) * newDir;
+            else if (rotPick == 3)
+                newDir = Quaternion.Euler(0, 0, -angle) * newDir;
+            else if (rotPick == 4)
+                newDir = Quaternion.Euler(0, angle, 0) * newDir;
+            else
+                newDir = Quaternion.Euler(0, -angle, 0) * newDir;
+        }
+
+        Debug.Log(dir);
+        Debug.Log(newDir);
+        
+        return newDir;
     }
 
     Vector3 NoiseOffset(int iter) {
@@ -107,19 +185,28 @@ public class NoiseTreeGenerator : MonoBehaviour
 
     void OnDrawGizmos() {
         Gizmos.color = Color.green;
-        if (drawWireFrame && trunkPoints.Length > 0) {
-            // Draw Wireframe here
-            for (int i = 0; i < trunkPoints.Length - 1; i++) {
-                Gizmos.DrawSphere(trunkPoints[i], .1f);
-                Gizmos.DrawLine(trunkPoints[i], trunkPoints[i + 1]);
-            }
-            Gizmos.DrawSphere(trunkPoints[trunkPoints.Length - 1], .1f);
-            Gizmos.DrawLine(trunkPoints[trunkPoints.Length - 2], trunkPoints[trunkPoints.Length - 1]);
+        try {
+            if (drawWireFrame && trunkPoints.Length > 0) {
+                // Draw Wireframe here
+                for (int i = 0; i < trunkPoints.Length - 1; i++) {
+                    Gizmos.DrawSphere(trunkPoints[i], .1f);
+                    Gizmos.DrawLine(trunkPoints[i], trunkPoints[i + 1]);
+                }
+                Gizmos.DrawSphere(trunkPoints[trunkPoints.Length - 1], .1f);
+                Gizmos.DrawLine(trunkPoints[trunkPoints.Length - 2], trunkPoints[trunkPoints.Length - 1]);
 
-            Gizmos.color = Color.red;
-            for (int j = 0; j < branches.Length; j++) {
-                Gizmos.DrawWireSphere(branches[j], .2f);
+                Gizmos.color = Color.red;
+                for (int j = 0; j < branches.Count; j++) {
+                    for (int k = 0; k < branches[j].points.Count - 1; k++) {
+                        Gizmos.DrawWireSphere(branches[j].points[k], .1f);
+                        Gizmos.DrawLine(branches[j].points[k], branches[j].points[k + 1]);
+                    }
+                    Gizmos.DrawWireSphere(branches[j].points[branches[j].points.Count - 1], .1f);
+                    Gizmos.DrawLine(branches[j].points[branches[j].points.Count - 2], branches[j].points[branches[j].points.Count - 1]);
+                }
             }
+        } catch {
+            GenerateTree();
         }
     }
 
