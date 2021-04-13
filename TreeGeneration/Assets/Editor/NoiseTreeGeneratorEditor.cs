@@ -9,7 +9,7 @@ public class NoiseTreeGeneratorEditor : Editor
     float trunkMinLen = 2, trunkMinVal = 2, trunkMaxLen = 4, trunkMaxVal = 20;
     float branchMinNum = 0, branchMinVal = 0, branchMaxNum = 4, branchMaxVal = 10;
     float branchMinLen = 1, branchMinLenVal = 1, branchMaxLen = 4, branchMaxLenVal = 10;
-    float branchPointsMinNum = 1, branchPointsMinVal = 1, branchPointsMaxNum = 5, branchPointsMaxVal = 10;
+    float branchPointsMinNum = 2, branchPointsMinVal = 2, branchPointsMaxNum = 5, branchPointsMaxVal = 10;
 
     public override void OnInspectorGUI() {
         

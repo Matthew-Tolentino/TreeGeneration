@@ -6,21 +6,25 @@ public class NoiseTreeGenerator : MonoBehaviour
 {
     [Header("Visuals")]
     public bool drawWireFrame;
+    public bool drawWireFrameVerts;
+    public bool drawMesh;
     public bool autoUpdate;
 
     [Header("Tree Logic")]
     [HideInInspector]
     public float trunkMinLen, trunkMaxLen;
-    public float branchLen = 1f;
-    public int numTrunkPoints = 5;
-
-    private Vector3 direction = Vector3.up;
+    public int seed = 1;
+    // private Vector3 direction;
     private Vector3 position;
-    private Vector3[] trunkPoints;
+    private TrunkPoint[] trunkPoints;
 
     [Header("Trunk")]
-    public int seed = 1;
+    public int numTrunkPoints = 5;
     public float offsetStrength = 1;
+    [Range(3, 12)]
+    public int detailVerts = 6;
+    [Range(.1f, 5f)]
+    public float trunkRadius = 1f;
     public Vector2 Xoffset;
     public Vector2 Yoffset;
     public Vector2 Zoffset;
@@ -33,40 +37,64 @@ public class NoiseTreeGenerator : MonoBehaviour
     [HideInInspector]
     public int branchPointsMin, branchPointsMax;
     public int spawnHeight;
+    [Range(1, 5)]
     public int branchDepth;
     [Range(1, 60)]
     public float branchAngle;
     [Range(0, 100)]
     public float splitChance;
+    [Range(.1f, 5f)]
+    public float branchRadius = 1f;
+    [Range(1f, 100f)]
+    [Tooltip("Rate at which branches thin based off last point. (ex: 90% of last point)")]
+    public float thinningRate = 90;
 
-    private Vector3[] branchPoints;
+    [Header("Mesh Generation")]
+    public MeshFilter meshFilter;
+
     private List<Branch> branches;
+    private NoiseTreeMeshData meshData;
 
     public void GenerateTree() {
         // Debug.Log(trunkMinLen + ", " + trunkMaxLen);
         GenereateTrunk();
         GenerateBranches();
+        GenerateMesh();
     }
 
     public void GenereateTrunk() {
         System.Random prng = new System.Random(seed);
+        Vector3 direction = Vector3.up;
 
         // Reset position to base of trunk
         position = transform.position;
-        trunkPoints = new Vector3[numTrunkPoints];
+        trunkPoints = new TrunkPoint[numTrunkPoints];
                 
         // Genreate points along trunk
-        trunkPoints[0] = position;
-        for (int i = 1; i < numTrunkPoints; i++) {
+        for (int i = 0; i < numTrunkPoints; i++) {
             Vector3 offsetVec = NoiseOffset(i) * offsetStrength;
 
             float trunkLen = prng.Next((int)trunkMinLen, (int)trunkMaxLen);
 
-            position += (direction.normalized + offsetVec) * trunkLen;
-            trunkPoints[i] = position;
-            position.x = transform.position.x;
-            position.z = transform.position.z;
+            trunkPoints[i].pos = position;
+            trunkPoints[i].dir = direction;
+
+            // Replace Vector3.up with direction to make trunk bendy
+            direction = (Vector3.up + offsetVec).normalized;
+            position += direction * trunkLen;
         }
+
+        // trunkPoints[0].pos = position;
+        // for (int i = 1; i < numTrunkPoints; i++) {
+        //     Vector3 offsetVec = NoiseOffset(i) * offsetStrength;
+
+        //     float trunkLen = prng.Next((int)trunkMinLen, (int)trunkMaxLen);
+
+        //     position += (direction.normalized + offsetVec) * trunkLen;
+        //     trunkPoints[i].pos = position;
+        //     position.x = transform.position.x;
+        //     position.z = transform.position.z;
+        // }
     }
 
     public void GenerateBranches() {
@@ -74,15 +102,12 @@ public class NoiseTreeGenerator : MonoBehaviour
 
         int numBraches = prng.Next(numBrachesMin, numBrachesMax);
 
-        // branchPoints = new Vector3[numBraches];
         branches = new List<Branch>();
 
         for (int i = 0; i < numBraches; i++) {
-            position = trunkPoints[prng.Next(spawnHeight, numTrunkPoints)];
-            // Generate starting point on branches
-            Branch new_Branch = new Branch();
-            new_Branch.points.Add(position);
+            position = trunkPoints[prng.Next(spawnHeight, numTrunkPoints - 1)].pos;
 
+            // Generate starting point on branches
             Vector3 direction = RotateDirection(branchAngle, Vector3.up, prng, 100f);
             Branch newBranch = GenerateBranch(direction, position, branchAngle, branchDepth, splitChance, prng);
 
@@ -90,10 +115,15 @@ public class NoiseTreeGenerator : MonoBehaviour
         }
     }
 
+    // Recursive function that makes branches and all sub-branches
     public Branch GenerateBranch(Vector3 dir, Vector3 startPos, float changeAngle, int depth, float splitChance, System.Random prng) {
+        if (depth <= 0)
+            return null; 
+
         Branch newBranch = new Branch();
         float newBranchPoints = prng.Next(branchPointsMin, branchPointsMax);
         float newBranchLen = prng.Next((int)branchMinLen, (int)branchMaxLen);
+        newBranch.segmentCount = (int)newBranchPoints - 1;
         Vector3 position = startPos;
 
         // Generate points for branch
@@ -102,19 +132,35 @@ public class NoiseTreeGenerator : MonoBehaviour
             Vector3 newDir = RotateDirection(changeAngle, dir, prng, 100f);
             position += newDir * newBranchLen;
             newBranch.points.Add(position);
-            // Debug.Log(position);
+            float split = prng.Next(0, 100);
+            // Chance to make sub-branch
+            if (split < splitChance && i != newBranchPoints - 1) {
+                Branch splitBranch = GenerateBranch(newDir, position, changeAngle, depth - 1, splitChance, prng);
+                if (splitBranch != null) {
+                    newBranch.segmentCount += splitBranch.segmentCount;
+                    newBranch.branches.Add(splitBranch);
+                }
+            }
         }
 
         return newBranch;
+    }
+
+    void GenerateMesh() {
+        if (!drawMesh) {
+            meshFilter.sharedMesh = new Mesh();
+            return;
+        }
+
+        meshData = NoiseTreeMeshGenerator.GenerateMesh(trunkPoints, branches, detailVerts, trunkRadius, branchRadius, thinningRate);
+        meshFilter.sharedMesh = meshData.CreateMesh();
     }
 
     public Vector3 RotateDirection(float angle, Vector3 dir, System.Random prng, float rotThresh) {
         Vector3 newDir = dir;
         // rotate only on x or z if direction is up
         if (newDir == Vector3.up) {
-            Debug.Log("Up");
             float rotPick = prng.Next(0, 4);
-            Debug.Log(rotPick);
             if (rotPick == 0)
                 newDir = Quaternion.Euler(angle, 0, 0) * newDir;
             else if (rotPick == 1)
@@ -123,15 +169,12 @@ public class NoiseTreeGenerator : MonoBehaviour
                 newDir = Quaternion.Euler(0, 0, angle) * newDir;
             else
                 newDir = Quaternion.Euler(0, 0, -angle) * newDir;
-            Debug.Log(newDir);
         }
 
         float rotChance = prng.Next(0, 100);
         
         if (rotChance < rotThresh) {
-            Debug.Log("rotating");
             float rotPick = prng.Next(0, 6);
-            Debug.Log(rotPick);
             if (rotPick == 0)
                 newDir = Quaternion.Euler(angle, 0, 0) * newDir;
             else if (rotPick == 1)
@@ -145,9 +188,6 @@ public class NoiseTreeGenerator : MonoBehaviour
             else
                 newDir = Quaternion.Euler(0, -angle, 0) * newDir;
         }
-
-        Debug.Log(dir);
-        Debug.Log(newDir);
         
         return newDir;
     }
@@ -187,26 +227,42 @@ public class NoiseTreeGenerator : MonoBehaviour
         Gizmos.color = Color.green;
         try {
             if (drawWireFrame && trunkPoints.Length > 0) {
-                // Draw Wireframe here
+                // Draw Trunk Wireframe
                 for (int i = 0; i < trunkPoints.Length - 1; i++) {
-                    Gizmos.DrawSphere(trunkPoints[i], .1f);
-                    Gizmos.DrawLine(trunkPoints[i], trunkPoints[i + 1]);
+                    Gizmos.DrawSphere(trunkPoints[i].pos, .1f);
+                    Gizmos.DrawLine(trunkPoints[i].pos, trunkPoints[i + 1].pos);
                 }
-                Gizmos.DrawSphere(trunkPoints[trunkPoints.Length - 1], .1f);
-                Gizmos.DrawLine(trunkPoints[trunkPoints.Length - 2], trunkPoints[trunkPoints.Length - 1]);
 
                 Gizmos.color = Color.red;
+                // Draw Branches Wireframe
                 for (int j = 0; j < branches.Count; j++) {
-                    for (int k = 0; k < branches[j].points.Count - 1; k++) {
-                        Gizmos.DrawWireSphere(branches[j].points[k], .1f);
-                        Gizmos.DrawLine(branches[j].points[k], branches[j].points[k + 1]);
+                    GizmosDrawBranch(branches[j]);
+                }
+
+                if (drawWireFrameVerts) {
+                    Gizmos.color = Color.white;
+                    for (int k = 0; k < meshData.vertices.Length; k++) {
+                        Gizmos.DrawSphere(meshData.vertices[k], .1f);
                     }
-                    Gizmos.DrawWireSphere(branches[j].points[branches[j].points.Count - 1], .1f);
-                    Gizmos.DrawLine(branches[j].points[branches[j].points.Count - 2], branches[j].points[branches[j].points.Count - 1]);
                 }
             }
         } catch {
             GenerateTree();
+        }
+    }
+
+    void GizmosDrawBranch(Branch branch) {
+        // Draw Lines and points for current branch
+        for (int i = 0; i < branch.points.Count - 1; i++) {
+            Gizmos.DrawWireSphere(branch.points[i], .1f);
+            Gizmos.DrawLine(branch.points[i], branch.points[i + 1]);
+        }
+
+        // If there are sub-branches draw them
+        if (branch.branches.Count > 0) {
+            for (int j = 0; j < branch.branches.Count; j++) {
+                GizmosDrawBranch(branch.branches[j]);
+            }
         }
     }
 
@@ -217,5 +273,15 @@ public class NoiseTreeGenerator : MonoBehaviour
         }
         str += "]";
         Debug.Log(str);
+    }
+}
+
+public struct TrunkPoint {
+    public Vector3 pos;
+    public Vector3 dir;
+
+    public TrunkPoint(Vector3 _pos, Vector3 _dir) {
+        this.pos = _pos;
+        this.dir = _dir;
     }
 }
