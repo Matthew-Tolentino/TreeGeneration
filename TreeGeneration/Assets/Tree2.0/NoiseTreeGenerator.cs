@@ -261,6 +261,8 @@ public class NoiseTreeGenerator : MonoBehaviour
         // If there are sub-branches draw them
         if (branch.branches.Count > 0) {
             for (int j = 0; j < branch.branches.Count; j++) {
+                // Debug.Log(branch.branches[j].points[0]);
+                // Debug.Log(branch.branches[j].points[1]);
                 GizmosDrawBranch(branch.branches[j]);
             }
         }

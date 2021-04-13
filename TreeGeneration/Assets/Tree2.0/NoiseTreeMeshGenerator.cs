@@ -61,27 +61,17 @@ public class NoiseTreeMeshGenerator
     }
 
     static void GenerateVertPoints(Branch branch, NoiseTreeMeshData meshData, Dictionary<Vector3, int[]> pointToVerts, int detailVerts, float branchRadius, float thinningRate, ref int vertexIndex) {
-        int[] verticesToStore = new int[detailVerts];
         float branchRad = branchRadius;
         
         // Loop through points in the branch
         for (int i = 1; i < branch.points.Count; i++) {
+            int[] verticesToStore = new int[detailVerts];
+
             Vector3 dir = branch.points[i] - branch.points[i - 1];
             Vector3 tan = Vector3.zero, binormal = Vector3.zero;
-
             Vector3.OrthoNormalize(ref dir, ref tan, ref binormal);
 
             branchRad *= thinningRate / 100f;
-
-            // See if point splits and generate split branch first
-            if (branch.branches.Count > 0) {
-                for (int k = 0; k < branch.branches.Count; k++) {
-                    if (branch.branches[k].points[0] == branch.points[i]) {
-                        GenerateVertPoints(branch.branches[k], meshData, pointToVerts, detailVerts, branchRad * thinningRate / 100f, thinningRate, ref vertexIndex);
-                        break;
-                    }
-                }
-            }
 
             // Generate verts for branch thickness at point i
             for (int j = 0; j < detailVerts; j++) {
@@ -96,6 +86,35 @@ public class NoiseTreeMeshGenerator
             }
             
             pointToVerts.Add(branch.points[i], verticesToStore);
+
+            // See if point splits and generate split branch
+            if (branch.branches.Count > 0) {
+                for (int k = 0; k < branch.branches.Count; k++) {
+                    if (branch.branches[k].points[0] == branch.points[i]) {
+                        GenerateVertPoints(branch.branches[k], meshData, pointToVerts, detailVerts, branchRad * thinningRate / 100f, thinningRate, ref vertexIndex);
+                        break;
+                    }
+                }
+            }
+        }
+
+        // Figuring out how to skillfully insert triangle generation in the loop to make branch is too hard so im just doing it after
+        // Will be redundant but will work
+
+        // Generate triangles for branch
+        for (int k = 1; k < branch.points.Count; k++) {
+            Debug.Log(branch.points[k - 1]);
+            int[] pt1Verts = pointToVerts[branch.points[k - 1]];
+            int[] pt2Verts = pointToVerts[branch.points[k]];
+            for (int w = 0; w < detailVerts; w++) {
+                if (w < detailVerts - 1) {
+                    meshData.AddTriangle(pt1Verts[w], pt1Verts[w + 1], pt2Verts[w]);
+                    meshData.AddTriangle(pt2Verts[w], pt1Verts[w + 1], pt2Verts[w + 1]);
+                } else {
+                    meshData.AddTriangle(pt1Verts[detailVerts - 1], pt1Verts[0], pt2Verts[detailVerts - 1]);
+                    meshData.AddTriangle(pt2Verts[detailVerts - 1], pt1Verts[0], pt2Verts[0]);
+                }
+            }
         }
     }
 
@@ -126,6 +145,8 @@ public class NoiseTreeMeshData{
     }
 
     public void AddTriangle(int a, int b, int c) {
+
+        Debug.Log(triangleIndex);
         triangles[triangleIndex] = a;
         triangles[triangleIndex + 1] = b;
         triangles[triangleIndex + 2] = c;
