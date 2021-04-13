@@ -14,9 +14,6 @@ public class NoiseTreeGenerator : MonoBehaviour
     [HideInInspector]
     public float trunkMinLen, trunkMaxLen;
     public int seed = 1;
-    // private Vector3 direction;
-    private Vector3 position;
-    private TrunkPoint[] trunkPoints;
 
     [Header("Trunk")]
     public int numTrunkPoints = 5;
@@ -39,7 +36,7 @@ public class NoiseTreeGenerator : MonoBehaviour
     public int spawnHeight;
     [Range(1, 5)]
     public int branchDepth;
-    [Range(1, 60)]
+    [Range(1, 180)]
     public float branchAngle;
     [Range(0, 100)]
     public float splitChance;
@@ -51,6 +48,9 @@ public class NoiseTreeGenerator : MonoBehaviour
 
     [Header("Mesh Generation")]
     public MeshFilter meshFilter;
+
+    private Vector3 position;
+    private TrunkPoint[] trunkPoints;
 
     private List<Branch> branches;
     private NoiseTreeMeshData meshData;
@@ -146,7 +146,7 @@ public class NoiseTreeGenerator : MonoBehaviour
         return newBranch;
     }
 
-    void GenerateMesh() {
+    public void GenerateMesh() {
         if (!drawMesh) {
             meshFilter.sharedMesh = new Mesh();
             return;
@@ -154,6 +154,12 @@ public class NoiseTreeGenerator : MonoBehaviour
 
         meshData = NoiseTreeMeshGenerator.GenerateMesh(trunkPoints, branches, detailVerts, trunkRadius, branchRadius, thinningRate);
         meshFilter.sharedMesh = meshData.CreateMesh();
+    }
+
+    public void ResetNoiseTree() {
+        trunkPoints = new TrunkPoint[numTrunkPoints];
+        branches = new List<Branch>();
+        meshData = null;
     }
 
     public Vector3 RotateDirection(float angle, Vector3 dir, System.Random prng, float rotThresh) {

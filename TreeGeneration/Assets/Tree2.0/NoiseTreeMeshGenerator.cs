@@ -44,7 +44,6 @@ public class NoiseTreeMeshGenerator
                         meshData.AddTriangle(pt1Verts[w], pt1Verts[w + 1], vertexIndex - detailVerts + w);
                         meshData.AddTriangle(vertexIndex - detailVerts + w, pt1Verts[w + 1], vertexIndex - detailVerts + 1 + w);
                     } else {
-                        // Debug.Log("last tri " + i);
                         meshData.AddTriangle(pt1Verts[detailVerts - 1], pt1Verts[0], vertexIndex - 1);
                         meshData.AddTriangle(vertexIndex - 1, pt1Verts[0], vertexIndex - detailVerts);
                     }
@@ -103,7 +102,6 @@ public class NoiseTreeMeshGenerator
 
         // Generate triangles for branch
         for (int k = 1; k < branch.points.Count; k++) {
-            Debug.Log(branch.points[k - 1]);
             int[] pt1Verts = pointToVerts[branch.points[k - 1]];
             int[] pt2Verts = pointToVerts[branch.points[k]];
             for (int w = 0; w < detailVerts; w++) {
@@ -145,8 +143,6 @@ public class NoiseTreeMeshData{
     }
 
     public void AddTriangle(int a, int b, int c) {
-
-        Debug.Log(triangleIndex);
         triangles[triangleIndex] = a;
         triangles[triangleIndex + 1] = b;
         triangles[triangleIndex + 2] = c;
